@@ -256,7 +256,8 @@ export async function runInRepo(options: RunOptions & RepoOptions) {
 		await testCommand?.(pkg.scripts)
 	}
 	let overrides = options.overrides || {}
-	overrides.rollup ||= await getRollupVersionFromVitePackageJson(options)
+	// NOTE: version range doesn't work with yarn
+	overrides['rollup@^3'] ||= await getRollupVersionFromVitePackageJson(options)
 	if (options.release) {
 		if (overrides.vite && overrides.vite !== options.release) {
 			throw new Error(
