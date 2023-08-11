@@ -15,6 +15,7 @@ import { detect, AGENTS, Agent, getCommand } from '@antfu/ni'
 import actionsCore from '@actions/core'
 // eslint-disable-next-line n/no-unpublished-import
 import * as semver from 'semver'
+import fetch from 'node-fetch'
 
 const isGitHubActions = !!process.env.GITHUB_ACTIONS
 
@@ -255,6 +256,7 @@ export async function runInRepo(options: RunOptions & RepoOptions) {
 		await testCommand?.(pkg.scripts)
 	}
 	let overrides = options.overrides || {}
+	overrides.rollup ||= await getRollupVersionFromVitePackageJson(options)
 	if (options.release) {
 		if (overrides.vite && overrides.vite !== options.release) {
 			throw new Error(
@@ -303,6 +305,28 @@ export async function runInRepo(options: RunOptions & RepoOptions) {
 		await testCommand?.(pkg.scripts)
 	}
 	return { dir }
+}
+
+async function getRollupVersionFromVitePackageJson(options: RunOptions) {
+	let content: { name: string; dependencies: Record<string, string> }
+	if (options.release) {
+		const res = await fetch(
+			`https://cdn.jsdelivr.net/npm/vite@${options.release}/package.json`,
+		)
+		content = (await res.json()) as any
+	} else {
+		const packageJsonPath = `${options.vitePath}/packages/vite/package.json`
+		const packageJson = JSON.parse(
+			await fs.promises.readFile(packageJsonPath, 'utf-8'),
+		)
+		if (packageJson.name !== 'vite') {
+			throw new Error(
+				`expected  "name" field of ${packageJsonPath} to indicate vite, but got ${packageJson.name}.`,
+			)
+		}
+		content = packageJson
+	}
+	return content.dependencies.rollup
 }
 
 export async function setupViteRepo(options: Partial<RepoOptions>) {
